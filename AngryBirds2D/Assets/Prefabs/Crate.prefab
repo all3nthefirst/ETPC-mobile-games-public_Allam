@@ -12,7 +12,8 @@ GameObject:
   - component: {fileID: 2501148757057375115}
   - component: {fileID: 2985787247897351327}
   - component: {fileID: 3568494824270569034}
-  m_Layer: 0
+  - component: {fileID: 4083054846550067218}
+  m_Layer: 7
   m_Name: Crate
   m_TagString: Box
   m_Icon: {fileID: 0}
@@ -27,7 +28,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1626810451285524264}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3.5, y: -3.5, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -165,3 +166,27 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &4083054846550067218
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626810451285524264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dec6362b39a1ec84b94c2019c77a121e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HealthController
+  _health: 100
+  _damage: 8
+  _minDamageVelocity: 1
+  _destroyDelay: 0
+  _sprites:
+  - {fileID: 1711058790555283701, guid: 8b8e8c795c12a02499973dd901f4fe07, type: 3}
+  - {fileID: -3340693876559490350, guid: d9f019461b5fe2146942618b75d3fcc4, type: 3}
+  - {fileID: -8774252657543368869, guid: 66a8e758d1456cb4ab554352ac0a1abb, type: 3}
+  _renderer: {fileID: 2501148757057375115}
+  method:
+    m_PersistentCalls:
+      m_Calls: []

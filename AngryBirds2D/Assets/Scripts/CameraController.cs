@@ -4,7 +4,7 @@ public class CameraController : MonoBehaviour
 {
     public static CameraController instance;
     public Transform pivot;
-
+    public float HorizontalOffset = 2f;
     private Camera _camera;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -17,12 +17,12 @@ public class CameraController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Transform bird = SlingshotController.instance.GetCurrentBird();
+        Transform target = SlingshotController.instance.GetCurrentTarget();
 
-        if(bird.position.x > _camera.transform.position.x)
+        if(target.position.x > _camera.transform.position.x )
         {
-            Debug.Log("La posicion horizontal del pajaro es mayor que la de la camara");
-            _camera.transform.position = new Vector3(bird.position.x, _camera.transform.position.y, _camera.transform.position.z);
+            //Debug.Log("La posicion horizontal del pajaro es mayor que la de la camara");
+            _camera.transform.position = new Vector3(target.position.x, _camera.transform.position.y, _camera.transform.position.z);
         }
     }
 

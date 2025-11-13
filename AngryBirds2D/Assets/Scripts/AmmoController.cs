@@ -49,6 +49,10 @@ public class AmmoController : MonoBehaviour
         {
             return _birds[_ammoCount - 1];
         }
+        else
+        {
+            GameStateManager.Instance.ChangeGameState(GameState.StateType.OVER);
+        }
 
         // We should evaluate if we won.
         return null;
