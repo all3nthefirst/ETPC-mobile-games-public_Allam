@@ -23,6 +23,7 @@ public class SlingshotController : MonoBehaviour
 
     private float _timelerp = 0f;
 
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -41,25 +42,42 @@ public class SlingshotController : MonoBehaviour
             return;
         }
 
+        // --- CLICK ABAJO ---
         if (Input.GetMouseButtonDown(0))
         {
             _isDragging = false;
 
-            Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-            if(Physics2D.Raycast(ray.origin, ray.direction))
+            // Solo permitimos drag si el pájaro actual está listo (Kinematic)
+            if (CanDragCurrentBird())
             {
-                _isDragging = true;
+                Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
+                RaycastHit2D hit = Physics2D.Raycast(ray.origin, ray.direction);
+
+                // Solo empezamos a arrastrar si hemos hecho click sobre el pájaro actual
+                if (hit.collider != null && hit.collider.transform == _currentBird.transform)
+                {
+                    _isDragging = true;
+                }
             }
         }
+        // --- CLICK ARRIBA ---
         else if (Input.GetMouseButtonUp(0))
         {
-            _isDragging = false;
-
-            Shot();
+            // Solo disparamos si realmente estábamos arrastrando al pájaro
+            if (_isDragging)
+            {
+                _isDragging = false;
+                Shot();
+            }
+            else
+            {
+                _isDragging = false;
+            }
         }
 
         OnDrag();
     }
+
 
     public void OnDrag()
     {
@@ -98,6 +116,9 @@ public class SlingshotController : MonoBehaviour
 
     public void Shot()
     {
+        if (!CanDragCurrentBird())
+            return;
+
         _currentBird.Rbody.bodyType = RigidbodyType2D.Dynamic;
 
         float forceImpulse = _distance / _maxDistance;
@@ -107,6 +128,8 @@ public class SlingshotController : MonoBehaviour
 
         Invoke(nameof(ActivateBird), 0.1f);
     }
+
+
     public void Reload()
     {
         // We have to reload the new bird from the ammocontroller
@@ -146,4 +169,14 @@ public class SlingshotController : MonoBehaviour
     {
         _currentTarget = target;
     }
+    private bool CanDragCurrentBird()
+    {
+        // Solo podemos arrastrar si el pájaro existe,
+        // tiene Rbody y aún no ha sido disparado (sigue en Kinematic).
+        return _currentBird != null
+               && _currentBird.Rbody != null
+               && _currentBird.Rbody.bodyType == RigidbodyType2D.Kinematic;
+    }
+
+
 }
