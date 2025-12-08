@@ -1,14 +1,26 @@
-using UnityEngine;
-using UnityEngine.InputSystem.Controls;
-using UnityEngine.Windows;
+﻿using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Movimiento en tierra")]
     public float speed = 5f;
     public float acceleration = 10f;
     public float jumpForce = 12f;
     public float friction = 1f;
 
+    [Header("Agua")]
+    public float waterGravityScale = 0.5f;   // gravedad más suave en agua
+
+    [Tooltip("Capa donde está el agua (se rellena en Start con la layer 'Water')")]
+    public LayerMask waterMask;
+
+    [Tooltip("Radio del círculo para detectar agua")]
+    public float waterCheckRadius = 0.3f;
+
+    [Tooltip("Offset desde la posición del player para comprobar agua")]
+    public Vector2 waterCheckOffset = new Vector2(0f, -0.3f);
+
+    [Header("Suelo")]
     public float rayLength = 1f;
     public LayerMask rayMask;
 
@@ -17,42 +29,98 @@ public class PlayerController : MonoBehaviour
     private float _input;
     private bool _grounded;
 
+    private bool _inWater = false;
+    private float _defaultGravityScale;
+
+    // vidas / checkpoints
     private int _health = 5;
     private int _checkpoints = 0;
-    private int _maxCheckpoints = 0; 
+    private int _maxCheckpoints = 0;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+
     void Start()
     {
         _rigidbody = GetComponent<Rigidbody2D>();
+        if (_rigidbody == null)
+        {
+            Debug.LogError("PlayerController: NO hay Rigidbody2D en este GameObject.");
+            return;
+        }
 
-        // Cogemos todos los checkpoints de la escena, para saber su numero total
+        _defaultGravityScale = _rigidbody.gravityScale;
+
+        // Coge todos los checkpoints de la escena
         Checkpoint[] checkponts = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
         _maxCheckpoints = checkponts.Length;
         _checkpoints = _maxCheckpoints;
 
-        UIController.instance.SetHealths(_health);
-        UIController.instance.SetCheckpoints(_maxCheckpoints);
+        // Forzamos que el waterMask sea la capa "Water"
+        waterMask = LayerMask.GetMask("Water");
     }
 
-    // Update is called once per frame
+
     private void Update()
     {
+        // 1) DETECTAR SI ESTOY EN AGUA (OverlapCircle)
+        Vector2 waterCheckPos = (Vector2)transform.position + waterCheckOffset;
+        bool wasInWater = _inWater;
+        bool check = Physics2D.OverlapCircle(waterCheckPos, waterCheckRadius, waterMask);
+        _inWater = check;
+
+        // Cambiar gravedad solo al entrar / salir del agua
+        if (_inWater && !wasInWater)
+        {
+            _rigidbody.gravityScale = waterGravityScale;
+            Debug.Log("ENTRO en agua");
+        }
+        else if (!_inWater && wasInWater)
+        {
+            _rigidbody.gravityScale = _defaultGravityScale;
+            Debug.Log("SALGO de agua");
+        }
+
+        // 2) Input horizontal
         _input = UnityEngine.Input.GetAxisRaw("Horizontal");
 
-        _grounded = Physics2D.Raycast(transform.position, Vector2.down, rayLength, rayMask);
-
-        if (UnityEngine.Input.GetButtonDown("Jump") && _grounded)
+        // 3) Grounded solo fuera del agua
+        if (!_inWater)
         {
-            _rigidbody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            _grounded = Physics2D.Raycast(transform.position, Vector2.down, rayLength, rayMask);
+        }
+        else
+        {
+            _grounded = false;
+        }
+
+        // 4) SALTO
+        // - Si NO estoy en agua → salto normal solo si estoy en suelo
+        // - Si SÍ estoy en agua → salto infinito
+        if (UnityEngine.Input.GetButtonDown("Jump"))
+        {
+            if (!_inWater && _grounded)
+            {
+                // Salto normal en tierra
+                _rigidbody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            }
+            else if (_inWater)
+            {
+                // Salto infinito en agua
+                Vector2 vel = _rigidbody.linearVelocity;
+                vel.y = 0f; // opcional: para que cada impulso se sienta claro
+                _rigidbody.linearVelocity = vel;
+
+                _rigidbody.AddForce(Vector2.up * jumpForce * 0.7f, ForceMode2D.Impulse);
+            }
         }
     }
+
 
     private void FixedUpdate()
     {
         _velocity = _rigidbody.linearVelocity;
 
-        if(_input != 0)
+        // Movimiento horizontal igual siempre (tierra y agua)
+        if (_input != 0)
         {
             _velocity.x = Mathf.MoveTowards(_velocity.x, _input * speed, acceleration * Time.fixedDeltaTime);
         }
@@ -64,11 +132,14 @@ public class PlayerController : MonoBehaviour
         _rigidbody.linearVelocity = _velocity;
     }
 
+
+    // ========= VIDA / RESPAWN =========
+
     public void Respawn()
     {
-        if(Checkpoint.current != null)
+        if (Checkpoint.current != null)
         {
-            this.transform.position = Checkpoint.current.transform.position;
+            transform.position = Checkpoint.current.transform.position;
             Time.timeScale = 1f;
             _rigidbody.linearVelocity = Vector2.zero;
         }
@@ -76,18 +147,17 @@ public class PlayerController : MonoBehaviour
 
     public void Kill()
     {
-        _health = _health - 1;
-        
-        UIController.instance.SetHealths(_health);
-        Debug.Log(_health);
+        _health--;
 
-        if(_health > 0)
+        Debug.Log("Me han matado. Vida restante: " + _health);
+
+        if (_health > 0)
         {
-            GameStateManager.instance.ChangeGameState(GameStateManager.GameState.OVER);
+            Respawn();
         }
         else
         {
-            GameStateManager.instance.ChangeGameState(GameStateManager.GameState.OVERMAIN);
+            Debug.Log("Game Over definitivo.");
         }
     }
 
@@ -103,11 +173,9 @@ public class PlayerController : MonoBehaviour
 
     public void SetCheckpoint(Checkpoint chk)
     {
-        // Actualizo variable interna de numero de checkpoints
         _checkpoints = _checkpoints - 1;
-
-        // Actualizo variable visible de numro de checkpoints de la UI
-        UIController.instance.SetCheckpoints(_checkpoints);
+        if (_checkpoints < 0)
+            _checkpoints = 0;
     }
 
     public int GetHealth()
@@ -118,5 +186,14 @@ public class PlayerController : MonoBehaviour
     public void SetHealth(int health)
     {
         _health = health;
+    }
+
+
+    // (Opcional) ver el círculo de detección de agua en la escena
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Vector2 waterCheckPos = (Vector2)transform.position + waterCheckOffset;
+        Gizmos.DrawWireSphere(waterCheckPos, waterCheckRadius);
     }
 }
